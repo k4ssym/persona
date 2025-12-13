@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
+@source "../components/**/*.tsx";
+@source "../hooks/**/*.ts";
+@source "../lib/**/*.ts";
+@source "./**/*.tsx";
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
+  --muted: rgba(255, 255, 255, 0.4);
+  --surface: #0a0a0a;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #4285f4;
+  --green: #1db954;
+  --red: #ef4444;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 60px rgba(66, 133, 244, 0.3); }
+  50% { box-shadow: 0 0 80px rgba(66, 133, 244, 0.5); }
+}
+
+@keyframes glow-green {
+  0%, 100% { box-shadow: 0 0 60px rgba(29, 185, 84, 0.3); }
+  50% { box-shadow: 0 0 80px rgba(29, 185, 84, 0.5); }
+}
+
+@keyframes wave {
+  0%, 100% { height: 12px; }
+  50% { height: 36px; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-glow-green {
+  animation: glow-green 2s ease-in-out infinite;
+}
+
+.animate-wave {
+  animation: wave 0.5s ease-in-out infinite;
+}
+
+.animate-wave-1 { animation-delay: 0s; }
+.animate-wave-2 { animation-delay: 0.1s; }
+.animate-wave-3 { animation-delay: 0.2s; }
+.animate-wave-4 { animation-delay: 0.1s; }
+.animate-wave-5 { animation-delay: 0s; }
