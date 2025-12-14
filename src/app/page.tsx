@@ -15,8 +15,8 @@ const Avatar3D = dynamic(() => import('@/components/Avatar3D'), {
   )
 });
 
-const VAPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPI_KEY || '';
-const AVATAR_URL = process.env.NEXT_PUBLIC_AVATAR_URL || '';
+const VAPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPI_KEY || 'e10e6537-c43f-4eac-abfa-e8516445d6a1';
+const AVATAR_URL = process.env.NEXT_PUBLIC_AVATAR_URL || 'https://models.readyplayer.me/693d88c9e37c2412ef9d8da8.glb';
 
 type CallStatus = 'idle' | 'connecting' | 'active' | 'error';
 
