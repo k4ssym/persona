@@ -1,0 +1,11 @@
+var R=require("../../../chunks/[turbopack]_runtime.js")("server/app/api/conversation/route.js")
+R.c("server/chunks/4c6b0_next_a3e025ed._.js")
+R.c("server/chunks/4c6b0_openai_4f0b1c84._.js")
+R.c("server/chunks/4c6b0_@supabase_realtime-js_dist_module_31c1fcea._.js")
+R.c("server/chunks/4c6b0_@supabase_storage-js_dist_module_6e6cc517._.js")
+R.c("server/chunks/4c6b0_@supabase_auth-js_dist_module_9f08c8b7._.js")
+R.c("server/chunks/4c6b0_0fee43da._.js")
+R.c("server/chunks/[root-of-the-server]__b15c151e._.js")
+R.c("server/chunks/Desktop_xxx__next-internal_server_app_api_conversation_route_actions_5312498e.js")
+R.m("[project]/Desktop/xxx/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/Desktop/xxx/app/api/conversation/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)")
+module.exports=R.m("[project]/Desktop/xxx/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/Desktop/xxx/app/api/conversation/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports

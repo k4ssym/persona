@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabaseUrl = 'https://nmvqzzbyeksjhisishiu.supabase.co';
+        const supabaseKey = 'sb_publishable_psqetFJfLvd-7-Qv1Zm7fA_ILtiU8xg';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Test 1: Check connection
+        console.log('🔍 Testing Supabase connection...');
+        
+        // Test 2: Try to read from logs table
+        const { data, error } = await supabase.from('logs').select('*').limit(5);
+        
+        if (error) {
+            console.error('❌ Error reading logs:', error);
+            document.body.innerHTML = `
+                <h1>❌ Connection Error</h1>
+                <pre>${JSON.stringify(error, null, 2)}</pre>
+            `;
+        } else {
+            console.log('✅ Success! Found', data.length, 'logs');
+            document.body.innerHTML = `
+                <h1>✅ Supabase Connected</h1>
+                <p>Found ${data.length} existing log(s)</p>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        }
+
+        // Test 3: Try to insert a test log
+        const testLog = {
+            start_time: new Date().toISOString(),
+            user_query: 'Test query from connection check',
+            department: 'Test',
+            status: 'resolved',
+            duration: '1s',
+            is_flagged: false,
+            metadata: { latency: 100, confidence: 1.0, model: 'test', tokensUsed: 10 },
+            messages: [
+                { role: 'user', text: 'Hello test', timestamp: new Date().toLocaleTimeString() },
+                { role: 'ai', text: 'Test response', timestamp: new Date().toLocaleTimeString() }
+            ]
+        };
+
+        console.log('📝 Attempting to insert test log...');
+        const { data: insertData, error: insertError } = await supabase
+            .from('logs')
+            .insert([testLog])
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('❌ Insert failed:', insertError);
+            document.body.innerHTML += `
+                <h2>❌ Insert Test Failed</h2>
+                <pre>${JSON.stringify(insertError, null, 2)}</pre>
+            `;
+        } else {
+            console.log('✅ Insert successful!', insertData);
+            document.body.innerHTML += `
+                <h2>✅ Insert Test Successful</h2>
+                <pre>${JSON.stringify(insertData, null, 2)}</pre>
+            `;
+        }
+    </script>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #111; color: #0f0; }
+        h1 { color: #0f0; }
+        h2 { color: #ff0; }
+        pre { background: #222; padding: 10px; border-radius: 5px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>⏳ Testing Supabase Connection...</h1>
+</body>
+</html>

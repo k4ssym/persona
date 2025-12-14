@@ -1,0 +1,8 @@
+{
+  "name": "Propulso AI Kiosk",
+  "description": "A high-fidelity virtual receptionist kiosk featuring a 3D avatar, glassmorphic UI, and voice interaction simulation.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
