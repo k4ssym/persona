@@ -22,7 +22,7 @@ const MODELS = {
 };
 
 const SYSTEM_PROMPT = `
-You are Propulso, a futuristic AI Virtual Receptionist. 
+You are Persona, a futuristic AI Virtual Receptionist. 
 Answer briefly (max 2 sentences).
 IMPORTANT: If user asks for directions, append {{SHOW_MAP}}.
 If user asks for a human, append {{CALL_HUMAN}}.

@@ -672,7 +672,7 @@ function SettingsView() {
                      value={settings.systemPrompt}
                      onChange={e => updateSettings({ systemPrompt: e.target.value })}
                      className="w-full h-40 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none font-mono"
-                     placeholder="You are Propulso..."
+                     placeholder="You are Persona..."
                   />
                   <div className="flex justify-end mt-2">
                      <span className="text-[10px] text-white/30">Tokens: ~450</span>

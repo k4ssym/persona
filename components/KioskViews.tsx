@@ -661,7 +661,7 @@ function SettingsView() {
                      value={settings.systemPrompt}
                      onChange={e => updateSettings({ systemPrompt: e.target.value })}
                      className="w-full h-40 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-blue-500 resize-none font-mono"
-                     placeholder="You are Propulso..."
+                     placeholder="You are Persona..."
                   />
                   <div className="flex justify-end mt-2">
                      <span className="text-[10px] text-white/30">Tokens: ~450</span>
@@ -702,7 +702,7 @@ function SettingsView() {
                               className="w-full bg-white/5 border border-white/10 rounded-xl p-3 pr-10 text-sm text-white appearance-none cursor-pointer hover:bg-white/10 transition-colors focus:outline-none focus:border-blue-500"
                            >
                               <option value="en" className="bg-slate-900">English (US)</option>
-
+                              <option value="ru" className="bg-slate-900">Russian (RU)</option>
                            </select>
                            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-white/40 pointer-events-none" size={16} />
                         </div>

@@ -51,7 +51,7 @@ export default function LoginPage() {
       {/* Login Card */}
       <div className="relative z-10 w-full max-w-md p-8 m-4">
         <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-[32px] shadow-2xl overflow-hidden p-8 animate-in fade-in zoom-in-95 duration-500">
-          
+
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 mx-auto mb-4">
@@ -65,20 +65,20 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2 ml-1">Identity</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 focus:bg-white/10 transition-all"
-                placeholder="admin@propulso.ai"
+                placeholder="admin@Persona.ai"
               />
             </div>
-            
+
             <div>
               <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2 ml-1">Passkey</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -93,8 +93,8 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
               className="w-full group relative flex items-center justify-center gap-2 bg-white text-black font-bold py-4 rounded-xl shadow-xl shadow-white/10 hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
@@ -111,10 +111,10 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="mt-8 text-center">
-             <div className="flex items-center justify-center gap-2 text-white/20 text-[10px] uppercase tracking-widest">
-                <Lock size={12} />
-                <span>End-to-End Encrypted</span>
-             </div>
+            <div className="flex items-center justify-center gap-2 text-white/20 text-[10px] uppercase tracking-widest">
+              <Lock size={12} />
+              <span>End-to-End Encrypted</span>
+            </div>
           </div>
 
         </div>

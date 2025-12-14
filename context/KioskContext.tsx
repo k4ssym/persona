@@ -9,7 +9,7 @@ const KioskContext = createContext<KioskContextType | undefined>(undefined);
 const MAX_RECORDING_LENGTH = 15000;
 
 const DEFAULT_SETTINGS: AppSettings = {
-  systemPrompt: "You are Propulso, a futuristic AI Virtual Receptionist. Answer briefly.",
+  systemPrompt: "You are Persona, a futuristic AI Virtual Receptionist. Answer briefly.",
   sensitivity: 0.7,
   presenceTimeout: 30,
   subtitlesEnabled: true,
