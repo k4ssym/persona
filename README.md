@@ -32,7 +32,7 @@ Virtual Receptionist is a production-ready AI assistant designed to greet visito
 - Auto-start conversations when a visitor approaches
 - Privacy-focused: Processing done locally in browser
 
-### Admin Dashboard
+### Admin Dashboard -- uses hotkey CTRL + SHIFT + A
 - **Analytics & Reporting**: Charts for conversation trends (daily/weekly/monthly), resolution rates, latency, and costs.
 - **Conversation Logs**: Full history with search, filtering (Resolved/Unresolved), and CSV export.
 - **System Settings**: Real-time configuration of sensitivity, prompt behavior, voice settings, and language.
