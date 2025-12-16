@@ -1,23 +1,19 @@
+
 # Virtual Receptionist
 
-A modern AI-powered virtual receptionist with real-time voice conversation capabilities, 3D avatar visualization, and comprehensive admin dashboard.
+A modern AI-powered virtual receptionist with real-time voice conversation capabilities, 3D avatar visualization, and a comprehensive admin dashboard.
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
-![Vapi](https://img.shields.io/badge/Vapi-Voice_AI-purple)
-![License](https://img.shields.io/badge/License-MIT-green)
-
-## 🎯 Overview
-
+## Overview
 Virtual Receptionist is a production-ready AI assistant designed to greet visitors, answer questions, and provide navigation assistance within an organization. It features:
 
-- **Real-time voice conversations** powered by Vapi.ai
-- **3D animated avatar** using Ready Player Me
-- **Automatic face detection** for hands-free activation
-- **Conversation logging** with analytics
-- **Admin dashboard** for monitoring and configuration
+- Real-time voice conversations powered by Vapi.ai
+- 3D animated avatar using Ready Player Me
+- Automatic face detection for hands-free activation
+- Conversation logging with analytics
+- Admin dashboard for monitoring and configuration
+- Persistent data storage with Supabase
 
-## ✨ Features
+## Features
 
 ### Voice AI
 - **Speech-to-Text**: Deepgram Nova-2 with Russian language support
@@ -26,90 +22,82 @@ Virtual Receptionist is a production-ready AI assistant designed to greet visito
 - **Low latency**: Real-time conversation with minimal delay
 
 ### 3D Avatar
-- **Ready Player Me** integration for customizable avatars
-- **Lip sync animation** synchronized with speech
-- **Eye blinking** and subtle idle animations
-- **Responsive design** for all screen sizes
+- Ready Player Me integration for customizable avatars
+- Lip sync animation synchronized with speech
+- Eye blinking and subtle idle animations
+- Responsive design for all screen sizes
 
 ### Face Detection
-- **Webcam-based** presence detection
-- **Auto-start** conversations when a visitor approaches
-- **Privacy-focused**: Processing done locally in browser
+- Webcam-based presence detection
+- Auto-start conversations when a visitor approaches
+- Privacy-focused: Processing done locally in browser
 
 ### Admin Dashboard
-- **Password protected** access
-- **Conversation history** with full transcripts
-- **Statistics**: Total conversations, messages, average duration
-- **Real-time updates**
+- **Analytics & Reporting**: Charts for conversation trends (daily/weekly/monthly), resolution rates, latency, and costs.
+- **Conversation Logs**: Full history with search, filtering (Resolved/Unresolved), and CSV export.
+- **System Settings**: Real-time configuration of sensitivity, prompt behavior, voice settings, and language.
+- **Security**: Password-protected access (or Supabase Auth).
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Category | Technology |
 |----------|------------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 |
-| 3D Rendering | React Three Fiber, Three.js |
-| Voice AI | Vapi.ai |
-| Avatar | Ready Player Me |
-| STT | Deepgram |
-| TTS | ElevenLabs |
-| LLM | OpenAI GPT-4o-mini |
+| **Framework** | Next.js 16 (App Router) |
+| **Language** | TypeScript |
+| **Database** | Supabase (PostgreSQL) |
+| **3D Rendering** | React Three Fiber, Three.js |
+| **Voice AI** | Vapi.ai |
+| **Avatar** | Ready Player Me |
+| **STT** | Deepgram |
+| **TTS** | ElevenLabs |
+| **LLM** | OpenAI GPT-4o-mini |
 
-## 📋 Prerequisites
-
-- Node.js 18+ 
+## Prerequisites
+- Node.js 18+
 - npm or yarn
 - Vapi.ai account (free tier available)
+- Supabase account (free tier available)
 - Ready Player Me avatar (free)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone the repository
-
 ```bash
 git clone https://github.com/yourusername/virtual-receptionist.git
 cd virtual-receptionist
 ```
 
 ### 2. Install dependencies
-
 ```bash
 npm install
 ```
 
 ### 3. Configure environment variables
-
-Create a `.env` file in the root directory:
+Create a `.env.local` file in the root directory:
 
 ```env
 NEXT_PUBLIC_VAPI_KEY=your-vapi-public-key
+NEXT_PUBLIC_VAPI_ASSISTANT_ID=your-assistant-id
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 NEXT_PUBLIC_AVATAR_URL=https://models.readyplayer.me/your-avatar-id.glb
 NEXT_PUBLIC_ADMIN_PASSWORD=your-secure-password
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-for-webhooks
 ```
 
-### 4. Get your API keys
+> **Note**: If you require a ready-to-go `.env` file for testing or evaluation, please contact me via Telegram: **@k4ssym**
 
-#### Vapi.ai
-1. Sign up at [vapi.ai](https://vapi.ai)
-2. Go to Dashboard → Settings → API Keys
-3. Copy your **Public Key**
-
-#### Ready Player Me Avatar
-1. Visit [demo.readyplayer.me](https://demo.readyplayer.me)
-2. Create and customize your avatar
-3. Copy the `.glb` URL
+### 4. Database Setup
+1. Create a new Supabase project.
+2. Run the SQL schema provided in `supabase_schema.sql` in your Supabase SQL Editor to create the necessary tables (`conversations`, `messages`).
 
 ### 5. Run the development server
-
 ```bash
 npm run dev
 ```
+Open `http://localhost:3000` in your browser.
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 📁 Project Structure
-
+## Project Structure
 ```
 virtual-receptionist/
 ├── src/
@@ -117,6 +105,8 @@ virtual-receptionist/
 │   │   ├── page.tsx          # Main receptionist interface
 │   │   ├── admin/
 │   │   │   └── page.tsx      # Admin dashboard
+│   │   ├── api/
+│   │   │   └── webhook/      # Vapi webhook handler
 │   │   ├── layout.tsx        # Root layout
 │   │   └── globals.css       # Global styles
 │   ├── components/
@@ -124,66 +114,34 @@ virtual-receptionist/
 │   ├── hooks/
 │   │   └── useFaceDetection.ts  # Webcam face detection
 │   └── lib/
-│       └── logger.ts         # Conversation logging
+│       ├── logger.ts         # Supabase logging logic
+│       └── supabase.ts       # Supabase client initialization
 ├── public/                   # Static assets
-├── .env                      # Environment variables
-├── next.config.ts           # Next.js configuration
+├── .env.local                # Environment variables
+├── next.config.ts            # Next.js configuration
 ├── package.json
 └── README.md
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Customizing the AI Prompt
+Edit the system prompt in `src/app/page.tsx` or use the **Admin Dashboard** > **Settings** tab to update the prompt dynamically without redeploying.
 
-Edit the system prompt in `src/app/page.tsx`:
+### Webhook Setup (Optional for Analytics)
+To receive accurate cost and latency data from Vapi:
+1. Deploy the app or use `ngrok` to expose localhost.
+2. Add your webhook URL (`https://your-domain.com/api/webhook`) to the Vapi Assistant settings.
 
-```typescript
-content: `You are a voice receptionist. Speak briefly, 1-2 sentences...`
-```
-
-### Changing the Voice
-
-Modify the voice configuration in `src/app/page.tsx`:
-
-```typescript
-voice: {
-  provider: "11labs",
-  voiceId: "21m00Tcm4TlvDq8ikWAM", // Change voice ID
-  model: "eleven_multilingual_v2"
-}
-```
-
-Available ElevenLabs voices: [elevenlabs.io/voices](https://elevenlabs.io/voices)
-
-### Adjusting Camera Position
-
-In `src/components/Avatar3D.tsx`, modify the camera settings:
-
-```typescript
-<PerspectiveCamera 
-  makeDefault 
-  position={[0, 1.57, 2.0]}  // [x, y, z]
-  fov={17}                    // Field of view
-/>
-```
-
-## 🌐 Deployment
+## Deployment
 
 ### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Import project on [vercel.com](https://vercel.com)
-3. Add environment variables in Settings → Environment Variables
-4. Deploy
-
-```bash
-npm i -g vercel
-vercel
-```
+1. Push your code to GitHub.
+2. Import project on `vercel.com`.
+3. Add environment variables in Settings.
+4. Deploy.
 
 ### Docker
-
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
@@ -195,85 +153,26 @@ EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-### Other Platforms
+## Security
+- Admin dashboard is password-protected.
+- API keys are stored in environment variables.
+- Face detection is processed locally (no video sent to servers).
+- Database access is secured via Supabase RLS policies (optional).
 
-The project includes a `render.yaml` for Render.com deployment. Similar configuration works for:
-- Railway
-- Netlify
-- AWS Amplify
-
-## 🔒 Security
-
-- Admin dashboard is password-protected
-- API keys are stored in environment variables
-- `.env` files are excluded from Git
-- Face detection is processed locally (no data sent to servers)
-
-## 📊 Admin Dashboard
-
+## Admin Dashboard
 Access the admin panel at `/admin`
 
-**Default password**: `admin2024` (change via `NEXT_PUBLIC_ADMIN_PASSWORD`)
+**Default password**: `admin2024` (or as set in `NEXT_PUBLIC_ADMIN_PASSWORD`)
 
-Features:
-- View conversation statistics
-- Browse conversation history
-- Expand individual conversations to see full transcripts
-- Clear conversation logs
+**Features:**
+- View real-time conversation statistics.
+- Filter conversations by status (Resolved/Unresolved).
+- Search logs by ID, content, or date.
+- Export conversation history to CSV.
+- Update AI assistant prompt and settings.
 
-## 🎨 Customization
+## License
+MIT License - see LICENSE for details.
 
-### Theming
-
-The UI uses inline styles for maximum compatibility. Key colors:
-- Primary: `#9333ea` (purple)
-- Secondary: `#3b82f6` (blue)  
-- Success: `#22c55e` (green)
-- Error: `#ef4444` (red)
-
-### Avatar Customization
-
-1. Create a new avatar at [readyplayer.me](https://readyplayer.me)
-2. Update `NEXT_PUBLIC_AVATAR_URL` in your `.env`
-3. Restart the development server
-
-## 🐛 Troubleshooting
-
-### Avatar not loading
-- Check that the avatar URL ends with `.glb`
-- Verify CORS settings if using a custom avatar host
-- Try a different Ready Player Me avatar
-
-### Voice not working
-- Ensure microphone permissions are granted
-- Check Vapi.ai dashboard for API usage/errors
-- Verify the public key is correct
-
-### Face detection issues
-- Grant camera permissions in browser
-- Ensure adequate lighting
-- Check browser console for errors
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📞 Support
-
-- Create an issue on GitHub
-- Check [Vapi.ai documentation](https://docs.vapi.ai)
-- Review [Ready Player Me docs](https://docs.readyplayer.me)
-
----
-
-Built with ❤️ using Next.js, Vapi.ai, and Ready Player Me
+## Contact
+For inquiries, support, or ready-to-use configuration files, please contact via Telegram: **@k4ssym**
