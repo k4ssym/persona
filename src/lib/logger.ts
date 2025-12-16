@@ -18,6 +18,9 @@ class ConversationLogger {
   private currentConversation: ConversationLog | null = null;
   private logs: ConversationLog[] = [];
 
+  private readonly STORAGE_KEY = 'reception_conversation_logs';
+  private readonly LEGACY_STORAGE_KEYS = ['reception_logs'];
+
   startConversation(): string {
     const id = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.currentConversation = {
@@ -81,14 +84,15 @@ class ConversationLogger {
   clearLogs() {
     this.logs = [];
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('reception_logs');
+      localStorage.removeItem(this.STORAGE_KEY);
+      for (const key of this.LEGACY_STORAGE_KEYS) localStorage.removeItem(key);
     }
   }
 
   private saveToStorage() {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('reception_conversation_logs', JSON.stringify(this.logs));
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.logs));
       } catch (e) {
         console.error('Failed to save logs:', e);
       }
@@ -98,9 +102,26 @@ class ConversationLogger {
   private loadFromStorage() {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('reception_logs');
+        const stored = localStorage.getItem(this.STORAGE_KEY);
         if (stored) {
           this.logs = JSON.parse(stored);
+          return;
+        }
+
+        // Backward compatibility
+        for (const key of this.LEGACY_STORAGE_KEYS) {
+          const legacy = localStorage.getItem(key);
+          if (legacy) {
+            this.logs = JSON.parse(legacy);
+            // Migrate forward
+            try {
+              localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.logs));
+              localStorage.removeItem(key);
+            } catch {
+              // ignore
+            }
+            return;
+          }
         }
       } catch (e) {
         console.error('Failed to load logs:', e);

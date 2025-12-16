@@ -1,289 +1,340 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Vapi from '@vapi-ai/web';
-import { useFaceDetection } from '@/hooks/useFaceDetection';
+import AdminAuthOverlay from '../components/AdminAuthOverlay';
+import SubtitleOverlay from '../components/SubtitleOverlay';
+import PresenceDetector from '../components/PresenceDetector';
+import ResultOverlay from '../components/ResultOverlay';
 import { logger } from '@/lib/logger';
 
-const Avatar3D = dynamic(() => import('@/components/Avatar3D'), {
+const ParticlesAvatar = dynamic(() => import('../components/ParticlesAvatar'), {
   ssr: false,
   loading: () => (
-    <div className="fixed inset-0 flex items-center justify-center bg-[#0a0a0f]">
-      <div className="w-16 h-16 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+    <div className="fixed inset-0 flex items-center justify-center bg-black">
+      <div className="text-white">Loading Avatar...</div>
     </div>
   )
 });
 
-const VAPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPI_KEY || 'e10e6537-c43f-4eac-abfa-e8516445d6a1';
-const AVATAR_URL = process.env.NEXT_PUBLIC_AVATAR_URL || 'https://models.readyplayer.me/693d88c9e37c2412ef9d8da8.glb';
-
-type CallStatus = 'idle' | 'connecting' | 'active' | 'error';
-
 export default function Home() {
-  const [status, setStatus] = useState<CallStatus>('idle');
-  const [transcript, setTranscript] = useState('');
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [volume, setVolume] = useState(0);
-  const [error, setError] = useState('');
-  const [autoMode, setAutoMode] = useState(false);
   const vapiRef = useRef<Vapi | null>(null);
-  const autoStartTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startCallRef = useRef<(() => void) | null>(null);
+  const [vapiInstance, setVapiInstance] = useState<Vapi | null>(null);
+  const [callActive, setCallActive] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [assistantSpeaking, setAssistantSpeaking] = useState(false);
+  const [speechLevel, setSpeechLevel] = useState(0);
+  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const [lastAssistantFinal, setLastAssistantFinal] = useState<string>('');
+  
+  // Settings
+  const [sensitivity, setSensitivity] = useState(20);
+  const [showSubtitles, setShowSubtitles] = useState(true);
+  const [autoStart, setAutoStart] = useState(true);
+  const [cameraZone, setCameraZone] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
-  const { videoRef, canvasRef, startCamera, stopCamera, isDetecting, hasFace } = useFaceDetection({
-    onFaceDetected: () => {
-      if (status === 'idle' && autoMode) {
-        autoStartTimeout.current = setTimeout(() => {
-          startCallRef.current?.();
-        }, 1000);
-      }
-    },
-    onFaceLost: () => {
-      if (autoStartTimeout.current !== null) {
-        clearTimeout(autoStartTimeout.current);
-      }
-    }
-  });
+  const [assistantLanguage, setAssistantLanguage] = useState<'ru' | 'en'>('ru');
+  const [assistantVoiceGender, setAssistantVoiceGender] = useState<'female' | 'male'>('female');
+  const [assistantModel, setAssistantModel] = useState<string>('gpt-4o-mini');
 
   useEffect(() => {
-    const vapi = new Vapi(VAPI_PUBLIC_KEY);
-    vapiRef.current = vapi;
+    // Load settings
+    const savedSens = localStorage.getItem('camera_sensitivity');
+    if (savedSens) setSensitivity(Number(savedSens));
+
+    const savedSubs = localStorage.getItem('show_subtitles');
+    if (savedSubs !== null) setShowSubtitles(savedSubs === 'true');
+
+    const savedAuto = localStorage.getItem('auto_start');
+    if (savedAuto !== null) setAutoStart(savedAuto === 'true');
+
+    const savedZone = localStorage.getItem('camera_active_zone');
+    if (savedZone) {
+      try {
+        const parsed = JSON.parse(savedZone);
+        const x = Number(parsed?.x);
+        const y = Number(parsed?.y);
+        const w = Number(parsed?.w);
+        const h = Number(parsed?.h);
+        if ([x, y, w, h].every(Number.isFinite)) {
+          setCameraZone({ x, y, w, h });
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const savedLang = localStorage.getItem('assistant_language');
+    if (savedLang === 'ru' || savedLang === 'en') setAssistantLanguage(savedLang);
+
+    const savedGender = localStorage.getItem('assistant_voice_gender');
+    if (savedGender === 'female' || savedGender === 'male') setAssistantVoiceGender(savedGender);
+
+    const savedModel = localStorage.getItem('assistant_llm_model');
+    if (savedModel && typeof savedModel === 'string') setAssistantModel(savedModel);
+
+    const key = process.env.NEXT_PUBLIC_VAPI_KEY;
+    if (!key) {
+      console.warn('Missing NEXT_PUBLIC_VAPI_KEY');
+      return;
+    }
+    vapiRef.current = new Vapi(key);
+    setVapiInstance(vapiRef.current);
+
+    const vapi = vapiRef.current;
+    const onVapiMessage = (message: any) => {
+      if (message?.type !== 'transcript') return;
+
+      const role = message?.role;
+      const text = String(message?.transcript ?? '').trim();
+      if (!text) return;
+
+      // Keep the latest assistant-like transcript around for on-screen card parsing.
+      // (Vapi role varies: assistant/bot/ai/etc.)
+      if (role !== 'user') {
+        setLastAssistantFinal(text);
+      }
+
+      // Persist only non-partial transcripts to keep logs clean.
+      if (message?.transcriptType === 'partial') return;
+      if (role === 'user') logger.addMessage('user', text);
+      else logger.addMessage('assistant', text);
+    };
 
     vapi.on('call-start', () => {
-      setStatus('active');
-      setTranscript('Слушаю...');
-      setIsListening(true);
+      setConnecting(false);
+      setCallActive(true);
       logger.startConversation();
     });
-
     vapi.on('call-end', () => {
-      setStatus('idle');
-      setTranscript('');
-      setIsSpeaking(false);
-      setIsListening(false);
+      setConnecting(false);
+      setCallActive(false);
+      setAssistantSpeaking(false);
+      setSpeechLevel(0);
       logger.endConversation();
     });
-
     vapi.on('speech-start', () => {
-      setIsSpeaking(true);
-      setIsListening(false);
+      setAssistantSpeaking(true);
     });
-
     vapi.on('speech-end', () => {
-      setIsSpeaking(false);
-      setIsListening(true);
+      setAssistantSpeaking(false);
+      setSpeechLevel(0);
     });
-
-    vapi.on('message', (msg) => {
-      if (msg.type === 'transcript' && msg.transcriptType === 'final') {
-        setTranscript(msg.transcript);
-        logger.addMessage(msg.role === 'user' ? 'user' : 'assistant', msg.transcript);
-      }
+    vapi.on('volume-level', (volume) => {
+      // Vapi provides a scalar volume value; normalize defensively.
+      const v = Number(volume);
+      const normalized = Number.isFinite(v)
+        ? Math.max(0, Math.min(1, v > 1 ? v / 100 : v))
+        : 0;
+      setSpeechLevel(normalized);
     });
-
-    vapi.on('volume-level', (level) => {
-      setVolume(level);
-    });
-
     vapi.on('error', (err) => {
-      console.error('Vapi error:', err);
-      setError('Ошибка');
-      setStatus('error');
+      console.error('[Vapi] error', err);
+      setConnecting(false);
     });
 
-    return () => { 
-      vapi.stop();
-      stopCamera();
-    };
-  }, [stopCamera]);
+    vapi.on('message', onVapiMessage);
 
-  const startCall = useCallback(async () => {
-    if (!vapiRef.current || status !== 'idle') return;
-    setStatus('connecting');
-    setError('');
-    setTranscript('Подключение...');
+    return () => {
+      try {
+        vapi.removeAllListeners();
+      } catch {
+        // ignore
+      }
+      vapiRef.current = null;
+      setVapiInstance(null);
+    };
+  }, []);
+
+  const startCall = async () => {
+    const vapi = vapiRef.current;
+    if (!vapi) return;
+
+    setConnecting(true);
+
+    // Ask for mic permission up front (also used as fallback lipsync input).
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setAudioStream(stream);
+    } catch (e) {
+      console.warn('Mic permission denied (Vapi may still prompt):', e);
+    }
+
+    const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
+    
+    // Load custom prompt from Admin Panel
+    const savedPrompt = localStorage.getItem('assistant_prompt');
+    const defaultBasePrompt =
+      assistantLanguage === 'en'
+        ? 'You are a voice receptionist. Be concise (1-2 sentences). If unsure, ask a clarifying question.'
+        : 'Ты голосовой ресепшионист. Отвечай кратко (1-2 предложения). Если не уверен — задай уточняющий вопрос.';
+    const basePrompt = (savedPrompt && savedPrompt.trim()) ? savedPrompt : defaultBasePrompt;
+
+    const languageDirective = assistantLanguage === 'en'
+      ? 'IMPORTANT: Respond in English.'
+      : 'ВАЖНО: Отвечай на русском языке.';
+
+    const navigationGuidance = assistantLanguage === 'en'
+      ? (
+          'When you give directions inside the building, speak naturally (as normal conversation). ' +
+          'Include concrete details where possible: department name, room number, floor number, contact (phone/email), and direction words (left/right/straight/up/down, elevator/stairs). ' +
+          'Do NOT output JSON, XML, or any special markup.'
+        )
+      : (
+          'Когда даёшь навигацию по зданию, говори естественно (как в обычной беседе). ' +
+          'По возможности называй конкретику: отдел, кабинет/комната, этаж, контакты (телефон/почта) и направления (налево/направо/прямо/вверх/вниз, лифт/лестница). ' +
+          'НЕ выводи JSON, XML или любую разметку.'
+        );
+
+    const systemPrompt = `${basePrompt}\n\n${languageDirective}\n\n${navigationGuidance}`;
+
+    const voiceId = assistantVoiceGender === 'male'
+      ? 'ErXwobaYiN019PkySvjV'
+      : 'EXAVITQu4vr4xnSDxMaL';
+
+    // Inline assistant config (works if your Vapi org has credentials set).
+    // If you have a saved assistant, set NEXT_PUBLIC_VAPI_ASSISTANT_ID instead.
+    const assistant: any = {
+      firstMessage: assistantLanguage === 'en' ? 'Hello! How can I help you?' : 'Здравствуйте! Чем могу помочь?',
+      maxDurationSeconds: 3600,
+      transcriber: {
+        provider: 'deepgram',
+        model: 'nova-2',
+        language: assistantLanguage
+      },
+      model: {
+        provider: 'openai',
+        model: assistantModel || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          }
+        ]
+      },
+      voice: {
+        provider: '11labs',
+        voiceId,
+        model: 'eleven_multilingual_v2'
+      }
+    };
 
     try {
-      await vapiRef.current.start({
-        name: "Reception",
-        firstMessage: "Здравствуйте! Добро пожаловать. Чем могу помочь?",
-        model: {
-          provider: "openai",
-          model: "gpt-4o-mini",
-          messages: [{
-            role: "system",
-            content: `Ты — голосовой консультант. Говори кратко, 1-2 предложения. ТОЛЬКО на русском языке.
-
-ОТДЕЛЫ КОМПАНИИ:
-- Отдел продаж: 2 этаж, кабинет 203
-- Техподдержка: 1 этаж, кабинет 105
-- HR отдел: 3 этаж, кабинет 301
-- Бухгалтерия: 2 этаж, кабинет 210
-- Руководство: 4 этаж, кабинет 401
-
-Помогай посетителям найти нужный отдел. Всегда называй этаж и номер кабинета.`
-          }]
-        },
-        voice: {
-          provider: "11labs",
-          voiceId: "21m00Tcm4TlvDq8ikWAM",
-          model: "eleven_multilingual_v2"
-        },
-        transcriber: { provider: "deepgram", model: "nova-2", language: "ru" }
-      });
+      if (assistantId) {
+        await vapi.start(assistantId);
+      } else {
+        await vapi.start(assistant);
+      }
     } catch (e) {
-      setError('Ошибка подключения');
-      setStatus('error');
-    }
-  }, [status]);
-
-  // Update ref for face detection callback
-  useEffect(() => {
-    startCallRef.current = startCall;
-  }, [startCall]);
-
-  const endCall = () => {
-    vapiRef.current?.stop();
-    setStatus('idle');
-    setTranscript('');
-    setIsSpeaking(false);
-    setIsListening(false);
-  };
-
-  const toggleAutoMode = () => {
-    if (!autoMode) {
-      startCamera();
-      setAutoMode(true);
-    } else {
-      stopCamera();
-      setAutoMode(false);
+      console.error('[Vapi] start failed', e);
+      setConnecting(false);
     }
   };
 
-  const isActive = status === 'active';
-  const isConnecting = status === 'connecting';
+  const stopCall = async () => {
+    const vapi = vapiRef.current;
+    if (!vapi) return;
+    setConnecting(false);
+    try {
+      await vapi.stop();
+    } catch (e) {
+      console.error('[Vapi] stop failed', e);
+    }
+  };
 
   return (
-    <main className="min-h-screen h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Hidden video/canvas for face detection */}
-      <video ref={videoRef} className="hidden" playsInline muted />
-      <canvas ref={canvasRef} className="hidden" />
-
-      {/* 3D Avatar */}
-      <Avatar3D
-        avatarUrl={AVATAR_URL}
-        isSpeaking={isSpeaking}
-        isListening={isListening}
-        isActive={isActive || isConnecting}
-        volume={volume}
-      />
-
-      {/* UI Overlay */}
-      <div className="fixed inset-0 z-10 pointer-events-none">
-        {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-white">Ресепшн</h1>
-            
-            {/* Auto mode toggle */}
-            <button
-              onClick={toggleAutoMode}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                autoMode 
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                  : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-              </svg>
-              {autoMode ? (hasFace ? 'Лицо 👤' : 'Авто ✓') : 'Авто'}
-            </button>
-          </div>
-          
-          {/* Status indicator */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-md transition-all ${
-            isActive 
-              ? isSpeaking 
-                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
-                : 'bg-green-500/20 text-green-400 border border-green-500/30'
-              : isConnecting
-                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                : 'bg-white/5 text-white/40 border border-white/10'
-          }`}>
-            <span className={`w-2 h-2 rounded-full ${
-              isActive ? (isSpeaking ? 'bg-blue-400' : 'bg-green-400 animate-pulse') 
-                : isConnecting ? 'bg-yellow-400 animate-pulse' : 'bg-white/40'
-            }`} />
-            {isActive ? (isSpeaking ? 'Говорит' : 'Слушает') : isConnecting ? 'Подключение' : 'Оффлайн'}
-          </div>
-        </div>
-
-        {/* Bottom controls */}
-        <div className="absolute bottom-0 left-0 right-0 pb-12 pt-6 px-6 flex flex-col items-center gap-6 pointer-events-auto bg-gradient-to-t from-black/60 to-transparent">
-          {/* Transcript */}
-          <div className="max-w-lg text-center bg-black/50 backdrop-blur-md px-8 py-4 rounded-2xl border border-white/10">
-            <p className={`text-xl font-medium transition-all ${
-              error ? 'text-red-400' : isSpeaking ? 'text-white' : 'text-white/90'
-            }`}>
-              {error || transcript || (isActive ? '' : autoMode ? 'Подойдите ближе для начала разговора' : 'Нажмите чтобы поговорить')}
-            </p>
-          </div>
-
-          {/* Button */}
-          <button
-            onClick={isActive ? endCall : startCall}
-            disabled={isConnecting}
-            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
-              isActive 
-                ? 'bg-red-500 hover:bg-red-600 shadow-xl shadow-red-500/50' 
-                : 'bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 shadow-2xl shadow-purple-500/50'
-            } disabled:opacity-50`}
-          >
-            {isActive ? (
-              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" rx="2"/>
-              </svg>
-            ) : isConnecting ? (
-              <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/>
-                <path d="M19 10v1a7 7 0 01-14 0v-1M12 19v3"/>
-              </svg>
-            )}
-          </button>
-        </div>
-
-        {/* Admin link */}
-        <a 
-          href="/admin" 
-          className="fixed bottom-4 right-4 text-white/20 hover:text-white/40 text-xs pointer-events-auto"
-        >
-          Админ
-        </a>
+    <main style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      backgroundColor: 'black', 
+      overflow: 'hidden', 
+      position: 'relative',
+      fontFamily: "'Courier New', monospace"
+    }}>
+      <AdminAuthOverlay />
+      
+      {autoStart && (
+        <PresenceDetector 
+          onPresence={() => {
+            if (!callActive && !connecting) startCall();
+          }} 
+          isActive={callActive || connecting} 
+          sensitivity={sensitivity}
+          region={cameraZone ?? undefined}
+        />
+      )}
+      
+      {/* 3D Scene Layer */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
+        <ParticlesAvatar
+          started={callActive}
+          audioStream={audioStream}
+          speechLevel={assistantSpeaking ? speechLevel : 0}
+        />
       </div>
 
-      <KeyboardHandler 
-        onSpace={() => isActive ? endCall() : startCall()}
-        disabled={isConnecting}
-      />
+      {/* UI Layer */}
+      <div style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        zIndex: 10, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'flex-end', 
+        paddingBottom: '5rem', 
+        pointerEvents: 'none' 
+      }}>
+        <ResultOverlay vapi={vapiInstance} assistantText={lastAssistantFinal} uiLanguage={assistantLanguage} />
+        {showSubtitles && <SubtitleOverlay vapi={vapiInstance} />}
+        
+        {!callActive ? (
+          <button
+            onClick={startCall}
+            disabled={connecting}
+            style={{
+              pointerEvents: 'auto',
+              padding: '1.5rem 3rem',
+              backgroundColor: 'black',
+              border: '1px solid white',
+              color: 'white',
+              textTransform: 'uppercase',
+              letterSpacing: '0.2em',
+              cursor: connecting ? 'not-allowed' : 'pointer',
+              opacity: connecting ? 0.5 : 1,
+              transition: 'all 0.3s'
+            }}
+          >
+            {connecting ? 'Initializing...' : 'Start System'}
+          </button>
+        ) : (
+          <button
+            onClick={stopCall}
+            style={{
+              pointerEvents: 'auto',
+              padding: '1.5rem 3rem',
+              backgroundColor: 'white',
+              border: '1px solid white',
+              color: 'black',
+              textTransform: 'uppercase',
+              letterSpacing: '0.2em',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+          >
+            Terminate
+          </button>
+        )}
+
+        <div style={{ marginTop: '2rem', color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.3em' }}>
+          {callActive ? 'System Active' : connecting ? 'Connecting...' : 'Standby Mode'}
+        </div>
+      </div>
+
     </main>
   );
-}
-
-function KeyboardHandler({ onSpace, disabled }: { onSpace: () => void; disabled: boolean }) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !disabled) {
-        e.preventDefault();
-        onSpace();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onSpace, disabled]);
-  return null;
 }
